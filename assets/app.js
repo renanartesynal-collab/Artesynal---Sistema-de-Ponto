@@ -19,10 +19,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
 const THEME_KEY = "app-ponto-theme";
-const LOCAL_DB_KEY = "app-ponto-local-db-v1";
-const LOCAL_SESSION_KEY = "app-ponto-local-session";
 const REMEMBER_KEY = "app-ponto-remember-login";
-const LOGIN_FILE = "logins/logins.txt";
 const DEFAULT_SETTINGS = {
   workDays: [1, 2, 3, 4, 5],
   start: "08:00",
@@ -53,8 +50,6 @@ const state = {
   holidays: [],
   settings: { ...DEFAULT_SETTINGS },
   unsubscribes: [],
-  localAuth: false,
-  localUsers: [],
   pendingPunchAction: null,
   pendingLocation: null,
 };
@@ -149,10 +144,7 @@ loadRememberedLogin();
 bindEvents();
 updateClock();
 setInterval(updateClock, 1000);
-restoreLocalSession();
-
 onAuthStateChanged(auth, async (user) => {
-  if (state.localAuth) return;
   clearSubscriptions();
   state.user = user;
   state.profile = null;
@@ -217,60 +209,28 @@ async function handleLogin(event) {
   const password = elements.loginPassword.value;
 
   try {
-    const localUser = await findLocalLogin(email, password);
-    if (localUser) {
-      state.localAuth = true;
-      state.user = { uid: localUser.id, email: localUser.email };
-      state.profile = {
-        id: localUser.id,
-        name: localUser.name,
-        email: localUser.email,
-        role: localUser.role,
-      };
-      loadLocalData();
-      rememberLoginPreference(email, password, localUser.id);
-      elements.loginForm.reset();
-      loadRememberedLogin();
-      showLoginMessage("");
-      showLoggedIn();
-      return;
-    }
-
-    state.localAuth = false;
     await signInWithEmailAndPassword(auth, email, password);
-    rememberLoginPreference(email, password, null);
+    rememberLoginPreference(email, password);
     elements.loginForm.reset();
     loadRememberedLogin();
     showLoginMessage("");
   } catch (error) {
-    showLoginMessage(friendlyError(error));
+    showLoginMessage(`Login Firebase falhou. Para salvar no Firebase, cadastre esse email no Firebase Authentication. Erro: ${friendlyError(error)}`);
   }
 }
 
-async function handleLogout() {
-  if (state.localAuth) {
-    clearSubscriptions();
-    state.localAuth = false;
-    state.user = null;
-    state.profile = null;
-    localStorage.removeItem(LOCAL_SESSION_KEY);
-    showLoggedOut();
-    return;
-  }
 
-  localStorage.removeItem(LOCAL_SESSION_KEY);
+async function handleLogout() {
   await signOut(auth);
 }
 
-function rememberLoginPreference(email, password, localUserId) {
+function rememberLoginPreference(email, password) {
   if (!elements.rememberLogin.checked) {
     localStorage.removeItem(REMEMBER_KEY);
-    localStorage.removeItem(LOCAL_SESSION_KEY);
     return;
   }
 
   localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password, remember: true }));
-  if (localUserId) localStorage.setItem(LOCAL_SESSION_KEY, localUserId);
 }
 
 function loadRememberedLogin() {
@@ -283,27 +243,6 @@ function loadRememberedLogin() {
   } catch {
     localStorage.removeItem(REMEMBER_KEY);
   }
-}
-
-async function restoreLocalSession() {
-  const localUserId = localStorage.getItem(LOCAL_SESSION_KEY);
-  if (!localUserId) return;
-
-  const users = await loadLoginUsers();
-  const localUser = users.find((user) => user.id === localUserId);
-  if (!localUser) return;
-
-  state.localUsers = users;
-  state.localAuth = true;
-  state.user = { uid: localUser.id, email: localUser.email };
-  state.profile = {
-    id: localUser.id,
-    name: localUser.name,
-    email: localUser.email,
-    role: localUser.role,
-  };
-  loadLocalData();
-  showLoggedIn();
 }
 
 async function loadUserProfile(user) {
@@ -351,93 +290,6 @@ function startSubscriptions() {
 function clearSubscriptions() {
   state.unsubscribes.forEach((unsubscribe) => unsubscribe());
   state.unsubscribes = [];
-}
-
-async function findLocalLogin(email, password) {
-  const users = await loadLoginUsers();
-  state.localUsers = users;
-  return users.find((user) => user.email.toLowerCase() === email.toLowerCase() && user.password === password) || null;
-}
-
-async function loadLoginUsers() {
-  const response = await fetch(`${LOGIN_FILE}?v=${Date.now()}`);
-  if (!response.ok) return [];
-  const text = await response.text();
-  return parseLoginFile(text);
-}
-
-function parseLoginFile(text) {
-  const users = [];
-  let current = null;
-
-  text.split(/\r?\n/).forEach((rawLine) => {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) return;
-
-    const section = line.match(/^\[(.+)]$/);
-    if (section) {
-      if (isCompleteLogin(current)) users.push(normalizeLogin(current));
-      current = { id: section[1].trim() };
-      return;
-    }
-
-    if (!current || !line.includes("=")) return;
-    const [key, ...valueParts] = line.split("=");
-    current[key.trim().toLowerCase()] = valueParts.join("=").trim();
-  });
-
-  if (isCompleteLogin(current)) users.push(normalizeLogin(current));
-  return users;
-}
-
-function isCompleteLogin(user) {
-  return Boolean(user?.email && user?.senha && user?.nome && user?.funcao);
-}
-
-function normalizeLogin(user) {
-  return {
-    id: user.id,
-    email: user.email,
-    password: user.senha,
-    name: user.nome,
-    role: user.funcao === "coordinator" ? "coordinator" : "collaborator",
-  };
-}
-
-function loadLocalData() {
-  const dbState = readLocalDb();
-  state.employees = state.localUsers
-    .filter((user) => user.role !== "coordinator")
-    .map((user) => ({ id: user.id, name: user.name, email: user.email, role: user.role }))
-    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  state.punches = dbState.punches;
-  state.holidays = dbState.holidays;
-  state.settings = dbState.settings;
-}
-
-function readLocalDb() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(LOCAL_DB_KEY));
-    return {
-      punches: saved?.punches || [],
-      holidays: saved?.holidays || [],
-      settings: { ...DEFAULT_SETTINGS, ...(saved?.settings || {}) },
-    };
-  } catch {
-    return { punches: [], holidays: [], settings: { ...DEFAULT_SETTINGS } };
-  }
-}
-
-function saveLocalDb() {
-  localStorage.setItem(LOCAL_DB_KEY, JSON.stringify({
-    punches: state.punches,
-    holidays: state.holidays,
-    settings: state.settings,
-  }));
-}
-
-function localId(prefix) {
-  return `${prefix}-${crypto.randomUUID()}`;
 }
 
 function showLoggedOut() {
@@ -751,7 +603,6 @@ async function createPunch(action, location) {
   const status = getCurrentStatus(state.profile.id);
 
   const punch = {
-    id: localId("punch"),
     employeeId: state.profile.id,
     employeeName: state.profile.name || state.user.email,
     employeeEmail: state.profile.email || state.user.email,
@@ -764,14 +615,7 @@ async function createPunch(action, location) {
     createdAt: new Date().toISOString(),
   };
 
-  if (state.localAuth) {
-    state.punches.push(punch);
-    saveLocalDb();
-    render();
-    return;
-  }
-
-  const { id, ...firestorePunch } = punch;
+  const firestorePunch = punch;
   await addDoc(collection(db, "punches"), {
     ...firestorePunch,
     createdAt: serverTimestamp(),
@@ -789,7 +633,6 @@ async function submitCorrection(event) {
   const timestamp = combineDateAndTime(elements.correctionDate.value, elements.correctionTime.value);
 
   const punch = {
-    id: localId("manual"),
     employeeId: state.profile.id,
     employeeName: state.profile.name || state.user.email,
     employeeEmail: state.profile.email || state.user.email,
@@ -802,17 +645,10 @@ async function submitCorrection(event) {
     createdAt: new Date().toISOString(),
   };
 
-  if (state.localAuth) {
-    state.punches.push(punch);
-    saveLocalDb();
-    render();
-  } else {
-    const { id, ...firestorePunch } = punch;
-    await addDoc(collection(db, "punches"), {
-      ...firestorePunch,
-      createdAt: serverTimestamp(),
-    });
-  }
+  await addDoc(collection(db, "punches"), {
+    ...punch,
+    createdAt: serverTimestamp(),
+  });
 
   elements.correctionForm.reset();
   elements.correctionDialog.close();
@@ -821,17 +657,6 @@ async function submitCorrection(event) {
 async function handleReviewClick(event) {
   const button = event.target.closest("[data-review]");
   if (!button) return;
-
-  if (state.localAuth) {
-    state.punches = state.punches.map((punch) => (
-      punch.id === button.dataset.id
-        ? { ...punch, status: button.dataset.review, reviewedBy: state.profile.id, reviewedAt: new Date().toISOString() }
-        : punch
-    ));
-    saveLocalDb();
-    render();
-    return;
-  }
 
   await updateDoc(doc(db, "punches", button.dataset.id), {
     status: button.dataset.review,
@@ -854,13 +679,6 @@ async function saveSettings(event) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (state.localAuth) {
-    state.settings = settings;
-    saveLocalDb();
-    render();
-    return;
-  }
-
   await setDoc(doc(db, "settings", "workSchedule"), {
     ...settings,
     updatedBy: state.profile.id,
@@ -878,15 +696,6 @@ async function saveHoliday(event) {
     createdAt: new Date().toISOString(),
   };
 
-  if (state.localAuth) {
-    state.holidays = state.holidays.filter((item) => item.id !== holiday.id);
-    state.holidays.push(holiday);
-    saveLocalDb();
-    render();
-    elements.holidayForm.reset();
-    return;
-  }
-
   await setDoc(doc(db, "holidays", elements.holidayDate.value), {
     date: holiday.date,
     name: holiday.name,
@@ -899,13 +708,6 @@ async function saveHoliday(event) {
 async function removeHoliday(event) {
   const button = event.target.closest("[data-holiday]");
   if (!button) return;
-
-  if (state.localAuth) {
-    state.holidays = state.holidays.filter((holiday) => holiday.id !== button.dataset.holiday);
-    saveLocalDb();
-    render();
-    return;
-  }
 
   await deleteDoc(doc(db, "holidays", button.dataset.holiday));
 }
