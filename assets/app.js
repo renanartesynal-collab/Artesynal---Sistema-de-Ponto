@@ -217,8 +217,19 @@ async function handleLogin(event) {
   const password = elements.loginPassword.value;
 
   try {
-    const localUser = await findLocalLogin(email, password);
-    if (localUser) {
+    state.localAuth = false;
+    await signInWithEmailAndPassword(auth, email, password);
+    rememberLoginPreference(email, password, null);
+    elements.loginForm.reset();
+    loadRememberedLogin();
+    showLoginMessage("");
+  } catch (error) {
+    try {
+      const localUser = await findLocalLogin(email, password);
+      if (!localUser) {
+        throw error;
+      }
+
       state.localAuth = true;
       state.user = { uid: localUser.id, email: localUser.email };
       state.profile = {
@@ -233,17 +244,9 @@ async function handleLogin(event) {
       loadRememberedLogin();
       showLoginMessage("");
       showLoggedIn();
-      return;
+    } catch {
+      showLoginMessage(friendlyError(error));
     }
-
-    state.localAuth = false;
-    await signInWithEmailAndPassword(auth, email, password);
-    rememberLoginPreference(email, password, null);
-    elements.loginForm.reset();
-    loadRememberedLogin();
-    showLoginMessage("");
-  } catch (error) {
-    showLoginMessage(friendlyError(error));
   }
 }
 
