@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>App de Ponto</title>
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" aria-labelledby="app-title">
+        <div>
+          <h1 id="app-title">Controle de jornada</h1>
+        </div>
+        <div class="hero-tools">
+          <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Ativar modo escuro" aria-pressed="false">
+            <span class="theme-icon" aria-hidden="true">D</span>
+            <span id="theme-label">Escuro</span>
+          </button>
+          <div class="clock-card" aria-live="polite">
+            <span id="current-date"></span>
+            <strong id="current-time"></strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="login-view" class="panel auth-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Acesso</p>
+            <h2>Entrar no sistema</h2>
+          </div>
+          <span class="badge muted">Firebase</span>
+        </div>
+
+        <form id="login-form" class="form-grid compact-form">
+          <label>
+            Email
+            <input id="login-email" type="email" autocomplete="email" required>
+          </label>
+          <label>
+            Senha
+            <input id="login-password" type="password" autocomplete="current-password" required>
+          </label>
+          <label class="check-row remember-row">
+            <input id="remember-login" type="checkbox">
+            Lembrar de mim
+          </label>
+          <button type="submit" class="primary-button">Entrar</button>
+        </form>
+        <p id="login-message" class="message"></p>
+      </section>
+
+      <section id="app-view" class="hidden">
+        <section class="session-bar panel">
+          <div>
+            <p class="eyebrow">Sessao</p>
+            <strong id="session-name">Usuario</strong>
+            <span id="session-role" class="muted-line">Colaborador</span>
+          </div>
+          <div class="session-actions">
+            <div id="coordinator-route" class="segmented hidden" aria-label="Area do sistema">
+              <button type="button" data-route="point" class="route-button active">Meu ponto</button>
+              <button type="button" data-route="admin" class="route-button">Administracao</button>
+            </div>
+            <button type="button" id="logout-button" class="secondary-button">Sair</button>
+          </div>
+        </section>
+
+        <section id="point-view">
+          <section class="workspace single">
+            <section class="panel punch-panel" aria-labelledby="punch-title">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Registro</p>
+                  <h2 id="punch-title">Meu ponto do dia</h2>
+                </div>
+                <span id="selected-status" class="badge muted">Carregando</span>
+              </div>
+
+              <div id="selected-employee" class="selected-person"></div>
+
+              <div class="actions-grid" aria-label="Acoes de ponto">
+                <button type="button" data-action="entrada" class="action-button">Entrada</button>
+                <button type="button" data-action="inicio_pausa" class="action-button">Iniciar pausa</button>
+                <button type="button" data-action="fim_pausa" class="action-button">Finalizar pausa</button>
+                <button type="button" data-action="saida" class="action-button danger">Saida</button>
+              </div>
+
+              <div class="summary-grid">
+                <div>
+                  <span>Entrada</span>
+                  <strong id="summary-entrada">--:--</strong>
+                </div>
+                <div>
+                  <span>Pausa</span>
+                  <strong id="summary-pausa">0h00</strong>
+                </div>
+                <div>
+                  <span>Saida</span>
+                  <strong id="summary-saida">--:--</strong>
+                </div>
+                <div>
+                  <span>Trabalhadas</span>
+                  <strong id="summary-total">0h00</strong>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <section class="panel history-panel" aria-labelledby="history-title">
+            <div class="panel-header history-header">
+              <div>
+                <p class="eyebrow">Auditoria</p>
+                <h2 id="history-title">Historico de registros</h2>
+              </div>
+              <div class="history-controls">
+                <input id="history-date" type="date" aria-label="Filtrar por data">
+                <button type="button" id="request-correction" class="secondary-button">Solicitar correcao</button>
+                <button type="button" id="export-csv" class="secondary-button">Exportar CSV</button>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Hora</th>
+                    <th>Acao</th>
+                    <th>Origem</th>
+                    <th>Status</th>
+                    <th>Local</th>
+                    <th>Observacao</th>
+                  </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="admin-view" class="hidden">
+          <section class="admin-grid">
+            <aside class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Coordenacao</p>
+                  <h2>Colaborador</h2>
+                </div>
+              </div>
+              <label>
+                Selecionar colaborador
+                <select id="admin-employee"></select>
+              </label>
+              <div class="filter-stack">
+                <label>
+                  Tipo de filtro
+                  <select id="admin-period-type">
+                    <option value="day">Dia</option>
+                    <option value="month" selected>Mes</option>
+                    <option value="year">Ano</option>
+                  </select>
+                </label>
+                <label id="admin-day-label">
+                  Dia
+                  <input id="admin-day" type="date">
+                </label>
+                <label id="admin-month-label">
+                  Mes
+                  <input id="admin-month" type="month">
+                </label>
+                <label id="admin-year-label">
+                  Ano
+                  <input id="admin-year" type="number" min="2020" max="2100">
+                </label>
+              </div>
+            </aside>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Resumo mensal</p>
+                  <h2>Indicadores</h2>
+                </div>
+              </div>
+              <div class="summary-grid admin-summary">
+                <div>
+                  <span>Horas totais</span>
+                  <strong id="admin-hours">0h00</strong>
+                </div>
+                <div>
+                  <span>Horas extras</span>
+                  <strong id="admin-overtime">0h00</strong>
+                </div>
+                <div>
+                  <span>Dias trabalhados</span>
+                  <strong id="admin-worked-days">0</strong>
+                </div>
+                <div>
+                  <span>Faltas</span>
+                  <strong id="admin-absences">0</strong>
+                </div>
+                <div>
+                  <span>Horas atrasadas</span>
+                  <strong id="admin-late-hours">0h00</strong>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <section class="panel history-panel">
+            <div class="panel-header history-header">
+              <div>
+                <p class="eyebrow">Registros</p>
+                <h2>Historico do colaborador</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Hora</th>
+                    <th>Acao</th>
+                    <th>Origem</th>
+                    <th>Status</th>
+                    <th>Local</th>
+                    <th>Observacao</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-history-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Analise</p>
+                  <h2>Correcoes pendentes</h2>
+                </div>
+                <span id="pending-count" class="badge">0</span>
+              </div>
+              <div id="pending-list" class="review-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Calendario</p>
+                  <h2>Datas e jornada</h2>
+                </div>
+              </div>
+
+              <form id="settings-form" class="form-grid">
+                <fieldset>
+                  <legend>Dias de trabalho</legend>
+                  <div class="weekday-grid">
+                    <label><input type="checkbox" name="workday" value="1"> Seg</label>
+                    <label><input type="checkbox" name="workday" value="2"> Ter</label>
+                    <label><input type="checkbox" name="workday" value="3"> Qua</label>
+                    <label><input type="checkbox" name="workday" value="4"> Qui</label>
+                    <label><input type="checkbox" name="workday" value="5"> Sex</label>
+                    <label><input type="checkbox" name="workday" value="6"> Sab</label>
+                    <label><input type="checkbox" name="workday" value="0"> Dom</label>
+                  </div>
+                </fieldset>
+                <div class="time-grid">
+                  <label>Entrada<input id="setting-start" type="time" required></label>
+                  <label>Saida<input id="setting-end" type="time" required></label>
+                  <label>Inicio intervalo<input id="setting-lunch-start" type="time" required></label>
+                  <label>Fim intervalo<input id="setting-lunch-end" type="time" required></label>
+                </div>
+                <button type="submit" class="primary-button">Salvar jornada</button>
+              </form>
+
+              <form id="holiday-form" class="form-grid holiday-form">
+                <label>
+                  Data do feriado
+                  <input id="holiday-date" type="date" required>
+                </label>
+                <label>
+                  Nome
+                  <input id="holiday-name" type="text" placeholder="Ex.: Natal" required>
+                </label>
+                <button type="submit" class="secondary-button">Adicionar feriado</button>
+              </form>
+              <div id="holiday-list" class="holiday-list"></div>
+            </section>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="correction-dialog" class="modal">
+      <form id="correction-form" method="dialog" class="modal-card">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Ajuste manual</p>
+            <h2>Solicitar correcao</h2>
+          </div>
+          <button type="button" id="close-correction" class="icon-button" aria-label="Fechar">x</button>
+        </div>
+        <div class="form-grid">
+          <label>Data<input id="correction-date" type="date" required></label>
+          <label>Horario<input id="correction-time" type="time" required></label>
+          <label>
+            Tipo de ponto
+            <select id="correction-action" required>
+              <option value="entrada">Entrada</option>
+              <option value="inicio_pausa">Inicio de pausa</option>
+              <option value="fim_pausa">Fim de pausa</option>
+              <option value="saida">Saida</option>
+            </select>
+          </label>
+          <label>
+            Justificativa
+            <textarea id="correction-note" rows="3" placeholder="Explique o motivo do ajuste"></textarea>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="primary-button">Enviar para analise</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="location-dialog" class="modal map-modal">
+      <form id="location-form" method="dialog" class="modal-card">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Localizacao</p>
+            <h2>Confirmar ponto</h2>
+          </div>
+          <button type="button" id="cancel-location" class="icon-button" aria-label="Cancelar">x</button>
+        </div>
+        <div id="location-preview" class="map-preview"></div>
+        <div class="location-details">
+          <strong id="location-coordinates">Buscando coordenadas...</strong>
+          <span id="location-address" class="muted-line">Aguarde a permissao de localizacao.</span>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="confirm-location" class="primary-button" disabled>Confirmar registro</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="view-location-dialog" class="modal map-modal">
+      <div class="modal-card">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Local do ponto</p>
+            <h2>Registro no mapa</h2>
+          </div>
+          <button type="button" id="close-view-location" class="icon-button" aria-label="Fechar">x</button>
+        </div>
+        <div id="view-location-preview" class="map-preview"></div>
+        <div class="location-details">
+          <strong id="view-location-coordinates"></strong>
+          <span id="view-location-address" class="muted-line"></span>
+        </div>
+      </div>
+    </dialog>
+
+    <template id="empty-row-template">
+      <tr>
+        <td colspan="7" class="empty-table">Nenhum registro encontrado.</td>
+      </tr>
+    </template>
+
+    <script type="module" src="assets/app.js"></script>
+  </body>
+</html>

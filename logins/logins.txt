@@ -1,0 +1,108 @@
+# App de Ponto - Logins
+#
+# Como preencher:
+# - Edite apenas os campos depois do sinal de igual.
+# - funcao deve ser "coordinator" para coordenadores ou "collaborator" para colaboradores.
+# - Use email e senha para entrar no app.
+#
+# Exemplo:
+# email=ana@empresa.com
+# senha=123456
+# nome=Ana Souza
+# funcao=collaborator
+
+[coordenador-01]
+email=adm1.artesynal@gmail.com
+senha=ADM36634017
+nome=ADM TESTE
+funcao=coordinator
+
+[coordenador-02]
+email=
+senha=
+nome=
+funcao=coordinator
+
+[coordenador-03]
+email=
+senha=
+nome=
+funcao=coordinator
+
+[coordenador-04]
+email=
+senha=
+nome=
+funcao=coordinator
+
+[coordenador-05]
+email=
+senha=
+nome=
+funcao=coordinator
+
+[coordenador-06]
+email=
+senha=
+nome=
+funcao=coordinator
+
+[colaborador-01]
+email=renan.artesynal@gmail.com
+senha=R36634017
+nome=Renan
+funcao=Arte-Finalista
+
+[colaborador-02]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-03]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-04]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-05]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-06]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-07]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-08]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-09]
+email=
+senha=
+nome=
+funcao=collaborator
+
+[colaborador-10]
+email=
+senha=
+nome=
+funcao=collaborator
